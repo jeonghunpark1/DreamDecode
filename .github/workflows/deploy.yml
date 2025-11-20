@@ -22,26 +22,20 @@ jobs:
           port: 22
           script: |
             set -e
-
             echo ">>> 1) 프로젝트 폴더로 이동"
-            cd ${{ secrets.EC2_APP_DIR }}
+            cd ***
             pwd
-
             echo ">>> 2) 최신 코드 받기"
             git fetch --all
             git reset --hard origin/main
-
             echo ">>> 3) 빌드"
+            chmod +x gradlew
             ./gradlew build -x test
-
             echo ">>> 4) systemd 서비스 재시작"
             sudo systemctl restart dreamdecode
-
             echo ">>> 5) 상태 체크"
             sudo systemctl status dreamdecode --no-pager -l | head -n 40 || true
-
             echo ">>> 6) 최근 로그 확인"
             tail -n 30 app.log || echo "app.log 없음"
-
             echo "Deployment completed."
             exit 0

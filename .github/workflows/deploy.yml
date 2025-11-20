@@ -23,7 +23,7 @@ jobs:
           script: |
             set -e
             echo ">>> 1) 프로젝트 폴더로 이동"
-            cd ***
+            cd "${{ secrets.EC2_APP_DIR }}"
             pwd
             echo ">>> 2) 최신 코드 받기"
             git fetch --all

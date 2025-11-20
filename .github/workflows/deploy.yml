@@ -11,38 +11,37 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
-        continue-on-error: true
+      - name: Deploy to EC2 via SSH (systemd 사용)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
           script: |
-            # 1) 프로젝트 폴더로 이동
+            set -e
+
+            echo ">>> 1) 프로젝트 폴더로 이동"
             cd ${{ secrets.EC2_APP_DIR }}
+            pwd
 
-            # 2) 최신 코드 받기
-            git pull origin main
+            echo ">>> 2) 최신 코드 받기"
+            git fetch --all
+            git reset --hard origin/main
 
-            # 3) 빌드
+            echo ">>> 3) 빌드"
             ./gradlew build -x test
 
-            # 4) 기존 실행 중인 서버 종료
-            PID=$(pgrep -f "DreamDecode-0.0.1-SNAPSHOT.jar")
-            if [ -n "$PID" ]; then
-              echo "Stopping existing server: $PID"
-              kill -9 $PID
-            fi
+            echo ">>> 4) systemd 서비스 재시작"
+            sudo systemctl restart dreamdecode
 
-             # 5) GCP 자격증명 경로 환경변수 설정 
-            export GCP_CREDENTIALS_PATH=${{ secrets.GCP_CREDENTIALS_PATH }}
-            echo "GCP_CREDENTIALS_PATH=$GCP_CREDENTIALS_PATH"
+            echo ">>> 5) 상태 체크"
+            sudo systemctl status dreamdecode --no-pager -l | head -n 40 || true
 
-            # 6) 새 버전 실행 (dev 프로필로 실행)
-            nohup java -jar build/libs/DreamDecode-0.0.1-SNAPSHOT.jar \
-              --spring.profiles.active=prod > app.log 2>&1 &
+            echo ">>> 6) 최근 로그 확인"
+            tail -n 30 app.log || echo "app.log 없음"
+
             echo "Deployment completed."
-            exit 0    
+            exit 0
